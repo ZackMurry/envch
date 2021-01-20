@@ -1,3 +1,4 @@
+use std::fmt;
 
 #[derive(Debug)]
 pub enum Scope {
@@ -21,5 +22,11 @@ impl EnvironmentVariable {
       value,
       scope
     }
+  }
+}
+
+impl fmt::Display for EnvironmentVariable {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+      write!(f, "{} = {}", self.name, self.value)
   }
 }
