@@ -1,9 +1,12 @@
 use std::{env, fs};
-
+use structopt::StructOpt;
 use crate::utils::environment_variable::{EnvironmentVariable, Scope};
+use crate::input;
 
 pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
   let system_environment_path = "/etc/environment";
+  let parse_error_msg = "Error parsing /etc/environment";
+
   let declared_in = system_environment_path.to_string();
   let contents = fs::read_to_string(system_environment_path).expect("Failed to read /etc/environment");
   let mut split_lines = contents.split("\n");
@@ -12,12 +15,12 @@ pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
 
   while current_line.is_some() && !current_line.unwrap().is_empty() {
     let mut parts = current_line.unwrap().split('=');
-    let var_name = parts.next().expect("Error parsing /etc/environment").to_string();
+    let var_name = parts.next().expect(parse_error_msg).to_string();
     if var_name == "PATH" {
       current_line = split_lines.next();
       continue;
     }
-    let mut var_value = parts.next().expect("Error parsing /etc/environment").to_string();
+    let mut var_value = parts.next().expect(parse_error_msg).to_string();
     if var_value.starts_with('"') && var_value.ends_with('"') {
       var_value.pop();
       var_value = var_value.chars().skip(1).collect();
@@ -43,7 +46,9 @@ fn parse_bash(file_name: String, content: String) -> Vec<EnvironmentVariable> {
       let assignment: String = trimmed.chars().skip(7).collect();
       let name_option = assignment.split("=").next();
       if name_option.is_none() {
-        println!("Couldn't find a name for an environment variable. Continuing...");
+        if input::Cli::from_args().debug {
+          println!("Couldn't find a name for an environment variable. Continuing...");
+        }
         continue;
       }
       let name = name_option.unwrap();
@@ -52,7 +57,9 @@ fn parse_bash(file_name: String, content: String) -> Vec<EnvironmentVariable> {
       }
       let value_result = env::var(name);
       if value_result.is_err() {
-        println!("{} declared in {} but not found", name, file_name);
+        if input::Cli::from_args().debug {
+          println!("{} declared in {} but not found", name, file_name);
+        }
         continue;
       }
       let value = value_result.unwrap();
@@ -72,7 +79,9 @@ pub fn get_user_environment_variables() -> Option<Vec<EnvironmentVariable>> {
   for file in files {
     let cur = file.unwrap();
     if cur.file_type().expect(err_msg).is_dir() {
-      println!("Encountered a folder in /etc/profile.d. Skipping...");
+      if input::Cli::from_args().debug {
+        println!("Encountered a folder in /etc/profile.d. Skipping...");
+      }
       continue;
     }
     let content = fs::read_to_string(cur.path()).ok()?;
@@ -90,6 +99,18 @@ pub fn get_user_environment_variables() -> Option<Vec<EnvironmentVariable>> {
 
 pub fn get_all_environment_variables() -> Option<Vec<EnvironmentVariable>> {
   let mut system_vars = get_system_environment_variables();
+  
+  if input::Cli::from_args().show_path {
+    let path_name = "PATH";
+    let path_result = env::var(path_name);
+    if path_result.is_err() {
+      println!("Error getting PATH: not found.")
+    } else {
+      let path_var = EnvironmentVariable::new(path_name.to_string(), path_result.unwrap(), Scope::System, "".to_string());
+      system_vars.push(path_var);
+    }
+  }
+
   let user_vars_option = get_user_environment_variables();
   if user_vars_option.is_none() {
     return None
@@ -98,5 +119,6 @@ pub fn get_all_environment_variables() -> Option<Vec<EnvironmentVariable>> {
   for user_var in user_vars {
     system_vars.push(user_var);
   }
+
   Some(system_vars)
 }

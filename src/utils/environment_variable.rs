@@ -1,5 +1,7 @@
 use std::fmt;
 use termion::color;
+use crate::input;
+use structopt::StructOpt;
 
 #[derive(Debug)]
 pub enum Scope {
@@ -39,17 +41,16 @@ impl EnvironmentVariable {
     self.declared_in.as_str()
   }
 
-  pub fn balance_lengths(&mut self, name_len: usize, value_len: usize, declared_len: usize) {
-    // align all vals left with given length
+  pub fn balance_lengths(&mut self, name_len: usize, declared_len: usize) {
+    // align all equal signs
     for _ in 0..(name_len - self.name.len()) {
       self.name.push(' ');
     }
-    // since this is the last column, these aren't necessary atm
-    // for _ in 0..(value_len - self.value.len()) {
-    //   self.value.push(' ');
-    // }
-    for _ in 0..(declared_len - self.declared_in.len()) {
-      self.declared_in.push(' ');
+
+    if input::Cli::from_args().show_declared_in {
+      for _ in 0..(declared_len - self.declared_in.len()) {
+        self.declared_in.push(' ');
+      }
     }
   }
 }
@@ -63,13 +64,24 @@ impl fmt::Display for EnvironmentVariable {
       Scope::Terminal => color::Rgb(134, 38, 237),
       Scope::Process => color::Rgb(162, 232, 21)
     };
-    write!(f, "{}{} {}{} {}= {}",
-      color::Fg(color::LightBlack),
-      self.declared_in,
-      color::Fg(access_color),
-      self.name,
-      color::Fg(color::LightWhite),
-      self.value
-    )
+    let show_declared_in: bool = input::Cli::from_args().show_declared_in;
+    if show_declared_in {
+      let declared_in_color = color::Rgb(116, 184, 164);
+      write!(f, "{}{} {}{} {} = {}",
+        color::Fg(declared_in_color),
+        self.declared_in,
+        color::Fg(access_color),
+        self.name,
+        color::Fg(color::LightWhite),
+        self.value
+      )
+    } else {
+      write!(f, "{}{} {} = {}",
+        color::Fg(access_color),
+        self.name,
+        color::Fg(color::LightWhite),
+        self.value
+      )
+    }
   }
 }

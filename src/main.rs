@@ -1,5 +1,7 @@
 pub mod utils;
+pub mod input;
 use std::cmp::max;
+
 fn main() {
     let vars = utils::list_env::get_all_environment_variables();
     println!("");
@@ -21,8 +23,10 @@ fn main() {
         // todo optional column names
 
         for mut var in unwrapped {
-            var.balance_lengths(name_length, value_length, declared_length);
+            var.balance_lengths(name_length, declared_length);
             println!("{}", var);
         }
+    } else {
+        println!("Failed to execute. There are likely more logs above.");
     }
 }
