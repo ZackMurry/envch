@@ -4,6 +4,7 @@ use crate::utils::environment_variable::{EnvironmentVariable, Scope};
 
 pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
   let system_environment_path = "/etc/environment";
+  let declared_in = system_environment_path.to_string();
   let contents = fs::read_to_string(system_environment_path).expect("Failed to read /etc/environment");
   let mut split_lines = contents.split("\n");
   let mut env_variables: Vec<EnvironmentVariable> = Vec::new();
@@ -22,7 +23,7 @@ pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
       var_value = var_value.chars().skip(1).collect();
     }
     
-    let env_variable = EnvironmentVariable::new(var_name, var_value, Scope::System);
+    let env_variable = EnvironmentVariable::new(var_name, var_value, Scope::System, declared_in.clone());
     env_variables.push(env_variable);
     current_line = split_lines.next();
   }
@@ -30,7 +31,7 @@ pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
   env_variables
 }
 
-fn parse_bash(content: String) -> Vec<EnvironmentVariable> {
+fn parse_bash(file_name: String, content: String) -> Vec<EnvironmentVariable> {
   let lines = content.lines();
   
   let mut env_variables: Vec<EnvironmentVariable> = Vec::new();
@@ -51,11 +52,11 @@ fn parse_bash(content: String) -> Vec<EnvironmentVariable> {
       }
       let value_result = env::var(name);
       if value_result.is_err() {
-        println!("{} declared but not found", name);
+        println!("{} declared in {} but not found", name, file_name);
         continue;
       }
       let value = value_result.unwrap();
-      let env_variable = EnvironmentVariable::new(name.to_string(), value, Scope::User);
+      let env_variable = EnvironmentVariable::new(name.to_string(), value, Scope::User, file_name.clone());
       env_variables.push(env_variable);
     }
   }
@@ -75,7 +76,11 @@ pub fn get_user_environment_variables() -> Option<Vec<EnvironmentVariable>> {
       continue;
     }
     let content = fs::read_to_string(cur.path()).ok()?;
-    let parsed_vars = parse_bash(content);
+    let file_name = cur.file_name().to_str().expect(err_msg).to_string();
+    let mut file_path = user_profile_path.clone().to_string();
+    file_path.push('/');
+    file_path.push_str(file_name.as_str());
+    let parsed_vars = parse_bash(file_path, content);
     for env_var in parsed_vars {
       env_variables.push(env_var);
     }
