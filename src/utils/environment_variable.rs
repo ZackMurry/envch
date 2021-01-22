@@ -41,33 +41,33 @@ impl EnvironmentVariable {
     self.declared_in.as_str()
   }
 
-  pub fn balance_lengths(&mut self, name_len: usize, declared_len: usize) {
+  pub fn balance_lengths_with_declared(&mut self, name_len: usize, declared_len: usize) {
     // align all equal signs
     for _ in 0..(name_len - self.name.len()) {
       self.name.push(' ');
     }
-
-    if input::Cli::from_args().show_declared_in {
-      for _ in 0..(declared_len - self.declared_in.len()) {
-        self.declared_in.push(' ');
-      }
+    for _ in 0..(declared_len - self.declared_in.len()) {
+      self.declared_in.push(' ');
     }
   }
-}
 
-impl fmt::Display for EnvironmentVariable {
-  /// expects fixed-length fields
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+  pub fn balance_lengths(&mut self, name_len: usize) {
+    // align all equal signs
+    for _ in 0..(name_len - self.name.len()) {
+      self.name.push(' ');
+    }
+  }
+
+  pub fn print(&mut self, options: input::List) {
     let access_color: color::Rgb = match self.scope {
       Scope::System => color::Rgb(124, 171, 230),
       Scope::User => color::Rgb(220, 222, 89),
       Scope::Terminal => color::Rgb(134, 38, 237),
       Scope::Process => color::Rgb(162, 232, 21)
     };
-    let show_declared_in: bool = input::Cli::from_args().show_declared_in;
-    if show_declared_in {
+    if options.show_declared_in {
       let declared_in_color = color::Rgb(116, 184, 164);
-      write!(f, "{}{} {}{} {} = {}",
+      println!("{}{} {}{} {} = {}",
         color::Fg(declared_in_color),
         self.declared_in,
         color::Fg(access_color),
@@ -76,7 +76,7 @@ impl fmt::Display for EnvironmentVariable {
         self.value
       )
     } else {
-      write!(f, "{}{} {} = {}",
+      println!("{}{} {} = {}",
         color::Fg(access_color),
         self.name,
         color::Fg(color::LightWhite),

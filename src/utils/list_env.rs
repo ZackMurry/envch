@@ -97,10 +97,10 @@ pub fn get_user_environment_variables() -> Option<Vec<EnvironmentVariable>> {
   Some(env_variables)
 }
 
-pub fn get_all_environment_variables() -> Option<Vec<EnvironmentVariable>> {
+pub fn get_all_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
   let mut system_vars = get_system_environment_variables();
   
-  if input::Cli::from_args().show_path {
+  if options.show_path {
     let path_name = "PATH";
     let path_result = env::var(path_name);
     if path_result.is_err() {
