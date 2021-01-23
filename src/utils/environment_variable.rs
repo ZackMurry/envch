@@ -75,7 +75,7 @@ impl EnvironmentVariable {
         self.value
       )
     } else {
-      println!("{}{} {} = {}{}",
+      println!("{}{} {}={} {}",
         color::Fg(access_color),
         self.name,
         color::Fg(color::LightBlack),

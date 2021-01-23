@@ -128,6 +128,9 @@ pub fn get_terminal_environment_variables() -> Option<Vec<EnvironmentVariable>> 
     return None
   }
   let terminal_vars = terminal_vars_opt.unwrap();
+
+  // todo parse other terminal files (mainly .bashrc)
+
   Some(terminal_vars)
 }
 

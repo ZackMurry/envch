@@ -26,6 +26,9 @@ pub struct List {
   pub show_path: bool,
 
   #[structopt(short, long)]
-  pub debug: bool
+  pub debug: bool,
+
+  #[structopt(short = "c", long)]
+  pub show_columns: bool
 
 }
