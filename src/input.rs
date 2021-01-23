@@ -8,9 +8,6 @@ pub struct Cli {
   #[structopt(subcommand)]
   pub command: Option<Command>,
 
-  /// Show debug log
-  #[structopt(short, long)]
-  pub debug: bool
 }
 
 #[derive(Debug, StructOpt)]
@@ -26,5 +23,9 @@ pub struct List {
 
   /// Show PATH in output
   #[structopt(short = "p", long)]
-  pub show_path: bool
+  pub show_path: bool,
+
+  #[structopt(short, long)]
+  pub debug: bool
+
 }

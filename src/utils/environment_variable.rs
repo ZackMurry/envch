@@ -1,7 +1,5 @@
-use std::fmt;
 use termion::color;
 use crate::input;
-use structopt::StructOpt;
 
 #[derive(Debug)]
 pub enum Scope {
@@ -62,23 +60,25 @@ impl EnvironmentVariable {
     let access_color: color::Rgb = match self.scope {
       Scope::System => color::Rgb(124, 171, 230),
       Scope::User => color::Rgb(220, 222, 89),
-      Scope::Terminal => color::Rgb(134, 38, 237),
+      Scope::Terminal => color::Rgb(163, 113, 217),
       Scope::Process => color::Rgb(162, 232, 21)
     };
     if options.show_declared_in {
       let declared_in_color = color::Rgb(116, 184, 164);
-      println!("{}{} {}{} {} = {}",
+      println!("{}{} {}{} {}= {}{}",
         color::Fg(declared_in_color),
         self.declared_in,
         color::Fg(access_color),
         self.name,
+        color::Fg(color::LightBlack),
         color::Fg(color::LightWhite),
         self.value
       )
     } else {
-      println!("{}{} {} = {}",
+      println!("{}{} {} = {}{}",
         color::Fg(access_color),
         self.name,
+        color::Fg(color::LightBlack),
         color::Fg(color::LightWhite),
         self.value
       )

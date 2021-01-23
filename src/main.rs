@@ -25,6 +25,7 @@ fn list_env_vars(options: List) {
             }
             for mut var in unwrapped {
                 var.balance_lengths_with_declared(name_len, declared_len);
+                var.print(options);
             }
         } else {
             for mut var in unwrapped {
