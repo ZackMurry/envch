@@ -1,7 +1,7 @@
 use termion::color;
 use crate::input;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Scope {
   System,
   User,

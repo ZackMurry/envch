@@ -39,7 +39,7 @@ fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<E
   let mut env_variables: Vec<EnvironmentVariable> = Vec::new();
   for line in lines {
     let trimmed = line.trim();
-    if trimmed.starts_with("export") {
+    if trimmed.starts_with("export ") {
 
       // skipping the "export " part
       let assignment: String = trimmed.chars().skip(7).collect();
@@ -51,7 +51,7 @@ fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<E
         continue;
       }
       let name = name_option.unwrap();
-      if name == "PATH" {
+      if name == "PATH" || name.starts_with('#') {
         continue;
       }
       let value_result = env::var(name);
@@ -96,10 +96,13 @@ pub fn get_user_environment_variables(options: input::List) -> Option<Vec<Enviro
   Some(env_variables)
 }
 
-fn get_zsh_environment_variables() -> Option<Vec<EnvironmentVariable>> {
+fn get_zsh_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
   let zshenv_path = &shellexpand::tilde("~/.zshenv").to_string();
   let content_result = fs::read_to_string(zshenv_path);
   if content_result.is_err() {
+    if options.debug {
+      println!(".zshenv not found. User is not using zsh");
+    }
     // don't throw an error if path not found -- user just doesn't use zsh
     return Some(Vec::new());
   }
@@ -113,6 +116,9 @@ fn get_zsh_environment_variables() -> Option<Vec<EnvironmentVariable>> {
       continue;
     }
     let value = val_opt.unwrap().to_string();
+    if name.starts_with('#') {
+      continue;
+    }
     if name.starts_with("export ") {
       name = name.chars().skip(7).collect();
     }
@@ -122,14 +128,56 @@ fn get_zsh_environment_variables() -> Option<Vec<EnvironmentVariable>> {
   Some(env_vars)
 }
 
-pub fn get_terminal_environment_variables() -> Option<Vec<EnvironmentVariable>> {
-  let terminal_vars_opt = get_zsh_environment_variables();
+fn get_bash_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
+  let bashrc_path = &shellexpand::tilde("~/.bashrc").to_string();
+  let content_result = fs::read_to_string(bashrc_path);
+  if content_result.is_err() {
+    if options.debug {
+      println!(".bashrc not found. Apparently the user has never installed bash.");
+    }
+    return Some(Vec::new());
+  }
+  
+  let content = content_result.unwrap();
+
+  let mut env_vars = Vec::new();
+  for line in content.lines() {
+    let mut parts = line.split('=');
+    let mut name = parts.next().expect("Error reading .bashrc").to_string();
+    let val_opt = parts.next();
+    if val_opt.is_none() {
+      continue;
+    }
+    let value = val_opt.unwrap().to_string();
+    if name.starts_with("export ") {
+      name = name.chars().skip(7).collect();
+    }
+    
+    // not including vars with \t in their name because it likely means that they're in an if statement
+    // (i am not trying to make a bash parser smh)
+    if name.contains(' ') || name.starts_with('#') || name.contains('\t') {
+      continue;
+    }
+    let env_var = EnvironmentVariable::new(name, value, Scope::Terminal, bashrc_path.to_owned());
+    env_vars.push(env_var);
+  }
+  Some(env_vars)
+}
+
+pub fn get_terminal_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
+  let terminal_vars_opt = get_zsh_environment_variables(options);
   if terminal_vars_opt.is_none() {
     return None
   }
-  let terminal_vars = terminal_vars_opt.unwrap();
+  let mut terminal_vars = terminal_vars_opt.unwrap();
 
-  // todo parse other terminal files (mainly .bashrc)
+  let bash_vars_opt = get_bash_environment_variables(options);
+  if bash_vars_opt.is_none() {
+    return None
+  }
+  for var in bash_vars_opt.unwrap() {
+    terminal_vars.push(var);
+  }
 
   Some(terminal_vars)
 }
@@ -161,7 +209,7 @@ pub fn get_all_environment_variables(options: input::List) -> Option<Vec<Environ
     system_vars.push(user_var);
   }
 
-  let terminal_vars_option = get_terminal_environment_variables();
+  let terminal_vars_option = get_terminal_environment_variables(options);
   if terminal_vars_option.is_none() {
     if options.debug {
       println!("get_terminal_environment_variables() failed.")
