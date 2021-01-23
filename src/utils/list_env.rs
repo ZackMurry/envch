@@ -51,7 +51,7 @@ fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<E
         continue;
       }
       let name = name_option.unwrap();
-      if name == "PATH" || name.starts_with('#') {
+      if name == "PATH" || name.starts_with('#') || name.contains('\t') {
         continue;
       }
       let value_result = env::var(name);
@@ -182,6 +182,7 @@ pub fn get_terminal_environment_variables(options: input::List) -> Option<Vec<En
   Some(terminal_vars)
 }
 
+// todo change options to debug (bool) for better interoperability with other commands (don't know if they're'll be other options in the future, tho)
 pub fn get_all_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
   // the other vars are just added to system_vars
   let mut system_vars = get_system_environment_variables();

@@ -12,7 +12,8 @@ pub struct Cli {
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
-  List(List)
+  List(List),
+  Set(Set)
 }
 
 #[derive(Debug, StructOpt, Clone, Copy)]
@@ -25,10 +26,30 @@ pub struct List {
   #[structopt(short = "p", long)]
   pub show_path: bool,
 
+  /// Show debug log
   #[structopt(short, long)]
   pub debug: bool,
 
+  /// Show column names in the output
   #[structopt(short = "c", long)]
   pub show_columns: bool
+
+}
+
+#[derive(Debug, StructOpt, Clone)]
+pub struct Set {
+
+  /// Name of environment variable to set
+  pub name: String,
+
+  /// Value to set the environment variable to
+  pub value: String,
+
+  /// Show debug log
+  #[structopt(short, long)]
+  pub debug: bool,
+
+  #[structopt(long)]
+  pub dry_run: bool
 
 }
