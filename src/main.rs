@@ -81,6 +81,8 @@ fn set_env_var_user(options: Set) {
     }
     let content = content_res.unwrap();
     let mut new_content = String::new();
+
+    // already_declared is just for if, for some reason, list_env doesn't catch this variable
     let mut already_declared = false;
     for line in content.lines() {
         let assignment: String = line.to_string().chars().skip(7).collect(); // skip "export "
@@ -91,10 +93,12 @@ fn set_env_var_user(options: Set) {
         }
         if name.unwrap() == options.name {
             let cur_val = parts.next();
-            if cur_val.is_none() {
-                new_content.push_str(line);
-            } else {
+            if cur_val.is_some() {
                 println!("Previous value: {}", cur_val.unwrap());
+            } else {
+                new_content.push_str(line);
+                new_content.push('\n');
+                continue;
             }
             already_declared = true;
             new_content.push_str("export ");
@@ -119,12 +123,65 @@ fn set_env_var_user(options: Set) {
         println!("Error writing to {} -- try using `sudo`", envch_sh_path);
     } else {
         println!("Successfully set environment variable in {}", envch_sh_path);
+        println!("Log out of your computer for changes to take effect");
     }
-
 }
 
 fn set_env_var_system(options: Set) {
+    let environment_path = "/etc/environment";
+
+    let content_res = std::fs::read_to_string(environment_path);
+    if content_res.is_err() {
+        println!("Error reading {} -- make sure you are using `sudo`", environment_path);
+        return
+    }
+    let content = content_res.unwrap();
+    let mut new_content = String::new();
     
+    let mut already_declared = false; // just in case list_env doesn't catch this variable
+    for line in content.lines() {
+        let mut parts = line.split('=');
+        let name_opt = parts.next();
+        if name_opt.is_none() {
+            if options.debug {
+                println!("Warning -- name not found in variable declaration in /etc/environment. Line: {}", line);
+            }
+            new_content.push_str(line);
+            new_content.push('\n');
+            continue;
+        }
+        if name_opt.unwrap() == options.name {
+            let cur_val = parts.next();
+            if cur_val.is_some() {
+                println!("Previous value: {}", cur_val.unwrap());
+            } else {
+                new_content.push_str(line);
+                new_content.push('\n');
+                continue;
+            }
+            already_declared = true;
+            new_content.push_str(&options.name);
+            new_content.push_str("=\"");
+            new_content.push_str(&options.value);
+            new_content.push_str("\"");
+        } else {
+            new_content.push_str(line);
+            new_content.push('\n');
+        }
+    }
+    if !already_declared {
+        new_content.push_str(&options.name);
+        new_content.push_str("=\"");
+        new_content.push_str(&options.value);
+        new_content.push_str("\"");
+    }
+    let write_res = std::fs::write(environment_path, new_content);
+    if write_res.is_err() {
+        println!("Error writing to {} -- try using `sudo`", environment_path);
+    } else {
+        println!("Successfully set environment variable in {}", environment_path);
+        println!("Restart your computer for changes to take effect");
+    }
 }
 
 fn set_env_var(options: Set) {
@@ -202,7 +259,6 @@ fn set_env_var(options: Set) {
         set_env_var_system(options);
     } else if options.scope == Scope::User {
         set_env_var_user(options);
-        println!("Log out of your computer for changes to take effect");
     }
 }
 
