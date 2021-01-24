@@ -7,7 +7,7 @@ use utils::environment_variable::{EnvironmentVariable, Scope};
 use structopt::StructOpt;
 
 fn list_env_vars(options: List) {
-    let vars = utils::list_env::get_all_environment_variables(options);
+    let vars = utils::list_env::get_all_environment_variables(options.debug, true, options.show_path);
     
     if vars.is_some() {
         let unwrapped = vars.unwrap();
@@ -128,8 +128,7 @@ fn set_env_var_system(options: Set) {
 }
 
 fn set_env_var(options: Set) {
-    // todo this doesn't find user env vars when sudo is used (that should be fine, just don't look up the value)
-    let current_vars_opt = utils::list_env::get_all_environment_variables(List { debug: options.debug, show_columns: false, show_declared_in: false, show_path: false });
+    let current_vars_opt = utils::list_env::get_all_environment_variables(options.debug, false, false);
     if current_vars_opt.is_none() {
         println!("Error fetching current variables");
         return

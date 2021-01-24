@@ -1,6 +1,5 @@
 use std::{env, fs};
 use crate::utils::environment_variable::{EnvironmentVariable, Scope};
-use crate::input;
 
 pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
   let system_environment_path = "/etc/environment";
@@ -33,7 +32,7 @@ pub fn get_system_environment_variables() -> Vec<EnvironmentVariable> {
   env_variables
 }
 
-fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<EnvironmentVariable> {
+fn parse_bash(file_name: String, content: String, debug: bool, get_value_from_env: bool) -> Vec<EnvironmentVariable> {
   let lines = content.lines();
   
   let mut env_variables: Vec<EnvironmentVariable> = Vec::new();
@@ -45,7 +44,7 @@ fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<E
       let assignment: String = trimmed.chars().skip(7).collect();
       let name_option = assignment.split("=").next();
       if name_option.is_none() {
-        if options.debug {
+        if debug {
           println!("Couldn't find a name for an environment variable. Continuing...");
         }
         continue;
@@ -54,14 +53,17 @@ fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<E
       if name == "PATH" || name.starts_with('#') || name.contains('\t') {
         continue;
       }
-      let value_result = env::var(name);
-      if value_result.is_err() {
-        if options.debug {
-          println!("{} declared in {} but not found", name, file_name);
+      let mut value = String::new();
+      if get_value_from_env {
+        let value_result = env::var(name);
+        if value_result.is_err() {
+          if debug {
+            println!("{} declared in {} but not found", name, file_name);
+          }
+          continue;
         }
-        continue;
+        value = value_result.unwrap();
       }
-      let value = value_result.unwrap();
       let env_variable = EnvironmentVariable::new(name.to_string(), value, Scope::User, file_name.clone());
       env_variables.push(env_variable);
     }
@@ -69,7 +71,7 @@ fn parse_bash(file_name: String, content: String, options: input::List) -> Vec<E
   env_variables
 } 
 
-pub fn get_user_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
+pub fn get_user_environment_variables(debug: bool, get_value_from_env: bool) -> Option<Vec<EnvironmentVariable>> {
   let user_profile_path = "/etc/profile.d";
   let err_msg = "Error reading /etc/profile.d";
   let files = fs::read_dir(user_profile_path).expect(err_msg);
@@ -78,7 +80,7 @@ pub fn get_user_environment_variables(options: input::List) -> Option<Vec<Enviro
   for file in files {
     let cur = file.unwrap();
     if cur.file_type().expect(err_msg).is_dir() {
-      if options.debug {
+      if debug {
         println!("Encountered a folder in /etc/profile.d. Skipping...");
       }
       continue;
@@ -88,7 +90,7 @@ pub fn get_user_environment_variables(options: input::List) -> Option<Vec<Enviro
     let mut file_path = user_profile_path.clone().to_string();
     file_path.push('/');
     file_path.push_str(file_name.as_str());
-    let parsed_vars = parse_bash(file_path, content, options);
+    let parsed_vars = parse_bash(file_path, content, debug, get_value_from_env);
     for env_var in parsed_vars {
       env_variables.push(env_var);
     }
@@ -96,11 +98,11 @@ pub fn get_user_environment_variables(options: input::List) -> Option<Vec<Enviro
   Some(env_variables)
 }
 
-fn get_zsh_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
+fn get_zsh_environment_variables(debug: bool) -> Option<Vec<EnvironmentVariable>> {
   let zshenv_path = &shellexpand::tilde("~/.zshenv").to_string();
   let content_result = fs::read_to_string(zshenv_path);
   if content_result.is_err() {
-    if options.debug {
+    if debug {
       println!(".zshenv not found. User is not using zsh");
     }
     // don't throw an error if path not found -- user just doesn't use zsh
@@ -128,11 +130,11 @@ fn get_zsh_environment_variables(options: input::List) -> Option<Vec<Environment
   Some(env_vars)
 }
 
-fn get_bash_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
+fn get_bash_environment_variables(debug: bool) -> Option<Vec<EnvironmentVariable>> {
   let bashrc_path = &shellexpand::tilde("~/.bashrc").to_string();
   let content_result = fs::read_to_string(bashrc_path);
   if content_result.is_err() {
-    if options.debug {
+    if debug {
       println!(".bashrc not found. Apparently the user has never installed bash.");
     }
     return Some(Vec::new());
@@ -164,14 +166,14 @@ fn get_bash_environment_variables(options: input::List) -> Option<Vec<Environmen
   Some(env_vars)
 }
 
-pub fn get_terminal_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
-  let terminal_vars_opt = get_zsh_environment_variables(options);
+pub fn get_terminal_environment_variables(debug: bool) -> Option<Vec<EnvironmentVariable>> {
+  let terminal_vars_opt = get_zsh_environment_variables(debug);
   if terminal_vars_opt.is_none() {
     return None
   }
   let mut terminal_vars = terminal_vars_opt.unwrap();
 
-  let bash_vars_opt = get_bash_environment_variables(options);
+  let bash_vars_opt = get_bash_environment_variables(debug);
   if bash_vars_opt.is_none() {
     return None
   }
@@ -182,12 +184,11 @@ pub fn get_terminal_environment_variables(options: input::List) -> Option<Vec<En
   Some(terminal_vars)
 }
 
-// todo change options to debug (bool) for better interoperability with other commands (don't know if they're'll be other options in the future, tho)
-pub fn get_all_environment_variables(options: input::List) -> Option<Vec<EnvironmentVariable>> {
+pub fn get_all_environment_variables(debug: bool, get_value_from_env: bool, show_path: bool) -> Option<Vec<EnvironmentVariable>> {
   // the other vars are just added to system_vars
   let mut system_vars = get_system_environment_variables();
   
-  if options.show_path {
+  if show_path {
     let path_name = "PATH";
     let path_result = env::var(path_name);
     if path_result.is_err() {
@@ -198,9 +199,9 @@ pub fn get_all_environment_variables(options: input::List) -> Option<Vec<Environ
     }
   }
 
-  let user_vars_option = get_user_environment_variables(options);
+  let user_vars_option = get_user_environment_variables(debug, get_value_from_env);
   if user_vars_option.is_none() {
-    if options.debug {
+    if debug {
       println!("get_user_environment_variables() failed.");
     }
     return None
@@ -210,9 +211,9 @@ pub fn get_all_environment_variables(options: input::List) -> Option<Vec<Environ
     system_vars.push(user_var);
   }
 
-  let terminal_vars_option = get_terminal_environment_variables(options);
+  let terminal_vars_option = get_terminal_environment_variables(debug);
   if terminal_vars_option.is_none() {
-    if options.debug {
+    if debug {
       println!("get_terminal_environment_variables() failed.")
     }
     return None
