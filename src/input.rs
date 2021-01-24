@@ -1,5 +1,7 @@
 use structopt::StructOpt;
 
+use crate::utils::environment_variable::Scope;
+
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "envch", about = "An intuitive program that allows users to set, modify, list, and remove environment variables")]
@@ -36,6 +38,7 @@ pub struct List {
 
 }
 
+/// Updates an existing environment variable or creates a new one if not found
 #[derive(Debug, StructOpt, Clone)]
 pub struct Set {
 
@@ -49,7 +52,11 @@ pub struct Set {
   #[structopt(short, long)]
   pub debug: bool,
 
-  #[structopt(long)]
-  pub dry_run: bool
+  /// The scope to set the environment variable to.
+  /// Either "system", "user", or "terminal".
+  /// This option only applies if an environment variable with this name doesn't already exists.
+  /// If one already exists, it simply replaces the variable with the same scope.
+  #[structopt(short, long, default_value = "user")]
+  pub scope: Scope
 
 }

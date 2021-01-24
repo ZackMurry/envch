@@ -3,7 +3,7 @@ pub mod input;
 use std::{cmp::max, fs::File};
 use termion::style::{Underline, NoUnderline};
 use input::{List, Set};
-use utils::environment_variable::EnvironmentVariable;
+use utils::environment_variable::{EnvironmentVariable, Scope};
 use structopt::StructOpt;
 
 fn list_env_vars(options: List) {
@@ -67,8 +67,68 @@ fn list_env_vars(options: List) {
 
 }
 
+fn set_env_var_user(options: Set) {
+    let envch_sh_path = "/etc/profile.d/envch.sh";
+    
+    let mut content_res = std::fs::read_to_string(envch_sh_path);
+    if content_res.is_err() {
+        let create_res = File::create(envch_sh_path);
+        if create_res.is_err() {
+            println!("Error accessing {} -- try using `sudo`", envch_sh_path);
+            return
+        }
+        content_res = std::fs::read_to_string(envch_sh_path);
+    }
+    let content = content_res.unwrap();
+    let mut new_content = String::new();
+    let mut already_declared = false;
+    for line in content.lines() {
+        let assignment: String = line.to_string().chars().skip(7).collect(); // skip "export "
+        let mut parts = assignment.split('=');
+        let name = parts.next();
+        if name.is_none() {
+            continue;
+        }
+        if name.unwrap() == options.name {
+            let cur_val = parts.next();
+            if cur_val.is_none() {
+                new_content.push_str(line);
+            } else {
+                println!("Previous value: {}", cur_val.unwrap());
+            }
+            already_declared = true;
+            new_content.push_str("export ");
+            new_content.push_str(&options.name);
+            new_content.push_str("=\"");
+            new_content.push_str(&options.value);
+            new_content.push_str("\"");
+        } else {
+            new_content.push_str(line);
+            new_content.push('\n');
+        }
+    }
+    if !already_declared {
+        new_content.push_str("\nexport ");
+        new_content.push_str(&options.name);
+        new_content.push_str("=\"");
+        new_content.push_str(&options.value);
+        new_content.push_str("\"");
+    }
+    let write_res = std::fs::write(envch_sh_path, new_content);
+    if write_res.is_err() {
+        println!("Error writing to {} -- try using `sudo`", envch_sh_path);
+    } else {
+        println!("Successfully set environment variable in {}", envch_sh_path);
+    }
+
+}
+
+fn set_env_var_system(options: Set) {
+    
+}
+
 fn set_env_var(options: Set) {
-    // todo this doesn't find user env vars when sudo is used but that should be fine
+    // todo this doesn't find user env vars when sudo is used (that should be fine, just don't look up the value)
     let current_vars_opt = utils::list_env::get_all_environment_variables(List { debug: options.debug, show_columns: false, show_declared_in: false, show_path: false });
     if current_vars_opt.is_none() {
         println!("Error fetching current variables");
@@ -86,7 +146,7 @@ fn set_env_var(options: Set) {
         let existing_var = existing_var_opt.unwrap();
         let content_opt = std::fs::read_to_string(existing_var.get_declared_in());
         if content_opt.is_err() {
-            println!("Error reading {}", existing_var.get_declared_in());
+            println!("Error reading {} -- try using `sudo`", existing_var.get_declared_in());
         }
         let content = content_opt.unwrap();
         let mut new_content = String::new();
@@ -126,69 +186,24 @@ fn set_env_var(options: Set) {
             new_content.push('\n');
         }
 
-        if !options.dry_run {
-            let write_res = std::fs::write(existing_var.get_declared_in(), new_content);
-            if write_res.is_err() {
-                println!("Error writing to {} -- try using `sudo`", existing_var.get_declared_in());
+        let write_res = std::fs::write(existing_var.get_declared_in(), new_content);
+        if write_res.is_err() {
+            println!("Error writing to {} -- try using `sudo`", existing_var.get_declared_in());
+        } else {
+            println!("Successfully wrote to {}", existing_var.get_declared_in());
+            if existing_var.get_scope() == Scope::Terminal {
+                println!("Restart your terminal for changes to take effect");
+            } else if existing_var.get_scope() == Scope::User {
+                println!("Log out of your computer for changes to take effect");
             } else {
-                println!("Successfully wrote to {}", existing_var.get_declared_in());
+                println!("Restart your computer for changes to take effect");
             }
         }
-    } else {
-        let envch_sh_path = "/etc/profile.d/envch.sh";
-        
-        let mut content_res = std::fs::read_to_string(envch_sh_path);
-        if content_res.is_err() {
-            let create_res = File::create(envch_sh_path);
-            if create_res.is_err() {
-                println!("Error accessing {} -- try using `sudo`", envch_sh_path);
-                return
-            }
-            content_res = std::fs::read_to_string(envch_sh_path);
-        }
-        let content = content_res.unwrap();
-        let mut new_content = String::new();
-        let mut already_declared = false;
-        for line in content.lines() {
-            let assignment: String = line.to_string().chars().skip(7).collect(); // skip "export "
-            let mut parts = assignment.split('=');
-            let name = parts.next();
-            if name.is_none() {
-                continue;
-            }
-            if name.unwrap() == options.name {
-                let cur_val = parts.next();
-                if cur_val.is_none() {
-                    new_content.push_str(line);
-                } else {
-                    println!("Previous value: {}", cur_val.unwrap());
-                }
-                already_declared = true;
-                new_content.push_str("export ");
-                new_content.push_str(&options.name);
-                new_content.push_str("=\"");
-                new_content.push_str(&options.value);
-                new_content.push_str("\"");
-            } else {
-                new_content.push_str(line);
-                new_content.push('\n');
-            }
-        }
-        if !already_declared {
-            new_content.push_str("\nexport ");
-            new_content.push_str(&options.name);
-            new_content.push_str("=\"");
-            new_content.push_str(&options.value);
-            new_content.push_str("\"");
-        }
-        if !options.dry_run {
-            let write_res = std::fs::write(envch_sh_path, new_content);
-            if write_res.is_err() {
-                println!("Error writing to {} -- try using `sudo`", envch_sh_path);
-            } else {
-                println!("Successfully set environment variable in {}", envch_sh_path);
-            }
-        }
+    } else if options.scope == Scope::System {
+        set_env_var_system(options);
+    } else if options.scope == Scope::User {
+        set_env_var_user(options);
+        println!("Log out of your computer for changes to take effect");
     }
 }
 
