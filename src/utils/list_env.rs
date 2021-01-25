@@ -42,7 +42,8 @@ fn parse_bash(file_name: String, content: String, debug: bool, get_value_from_en
 
       // skipping the "export " part
       let assignment: String = trimmed.chars().skip(7).collect();
-      let name_option = assignment.split("=").next();
+      let mut parts = assignment.split('=');
+      let name_option = parts.next();
       if name_option.is_none() {
         if debug {
           println!("Couldn't find a name for an environment variable. Continuing...");
@@ -58,11 +59,25 @@ fn parse_bash(file_name: String, content: String, debug: bool, get_value_from_en
         let value_result = env::var(name);
         if value_result.is_err() {
           if debug {
-            println!("{} declared in {} but not found", name, file_name);
+            println!("{} declared in {} but not found in system", name, file_name);
           }
-          continue;
+          let value_opt = parts.next();
+          if value_opt.is_none() {
+            if debug {
+              println!("No equals sign found in {} for name {}", file_name, name);
+            }
+            continue;
+          }
+          value = value_opt.unwrap().to_string();
+          if value.contains("${") {
+            if debug {
+              println!("Cannot extract value from variable declared with a variable and not found in system");
+            }
+            continue;
+          }
+        } else {
+          value = value_result.unwrap();
         }
-        value = value_result.unwrap();
       }
       let env_variable = EnvironmentVariable::new(name.to_string(), value, Scope::User, file_name.clone());
       env_variables.push(env_variable);

@@ -359,6 +359,58 @@ fn remove_system_env_var(options: Remove) {
     }
 }
 
+fn remove_user_env_var(options: Remove, declared_in: &str) {
+    let content_res = fs::read_to_string(&declared_in);
+    if content_res.is_err() {
+        println!("Error reading {}", declared_in);
+        return;
+    }
+    let content = content_res.unwrap();
+    let mut new_content = String::new();
+    let mut updated = false;
+    for line in content.lines() {
+        // not removing variables that are nested in if statements and stuff bc the user probably doesn't want to remove those
+        if !line.starts_with("export ") && !line.starts_with(&options.name) {
+            new_content.push_str(line);
+            new_content.push('\n');
+            continue;
+        }
+        let mut assignment = line.to_string();
+        if assignment.starts_with("export ") {
+            // skipping "export "
+            assignment = assignment.chars().skip(7).collect();
+        }
+        let mut parts = assignment.split('=');
+        let name_opt = parts.next();
+        if name_opt.is_none() {
+            if options.debug {
+                println!("Variable in {} has no name. Line: {}", declared_in, line);
+            }
+            new_content.push_str(line);
+            new_content.push('\n');
+            continue;
+        }
+        let name = name_opt.unwrap();
+        if name == options.name {
+            updated = true;
+        } else {
+            new_content.push_str(line);
+            new_content.push('\n');
+        }
+    }
+    if !updated {
+        println!("Environment variable found in {} but later not found", declared_in);
+        return;
+    }
+    let write_res = fs::write(declared_in, new_content);
+    if write_res.is_err() {
+        println!("Error writing to {} -- try using `sudo`", declared_in);
+    } else {
+        println!("Successfully removed {} from {}", options.name, declared_in);
+        println!("Log out of your computer for changes to take effect");
+    }
+}
+
 fn remove_env_var(options: Remove) {
     let env_vars_opt = utils::list_env::get_all_environment_variables(options.debug, false, false);
     if env_vars_opt.is_none() {
@@ -374,12 +426,15 @@ fn remove_env_var(options: Remove) {
         }
     } 
     if env_var_opt.is_none() {
-        println!("Could not find environment variable with the name {}", options.name);
+        println!("Could not find an environment variable with the name {}", options.name);
         return;
     }
     let env_var = env_var_opt.unwrap();
     if env_var.get_scope() == Scope::System {
         remove_system_env_var(options);
+    } else if env_var.get_scope() == Scope::User {
+        // todo test
+        remove_user_env_var(options, env_var.get_declared_in());
     }
 }
 
