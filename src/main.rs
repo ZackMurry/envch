@@ -1,8 +1,8 @@
 pub mod utils;
 pub mod input;
-use std::{cmp::max, fs::File};
+use std::{cmp::max, fs, fs::File};
 use termion::style::{Underline, NoUnderline};
-use input::{List, Set};
+use input::{List, Remove, Set};
 use utils::environment_variable::{EnvironmentVariable, Scope};
 use structopt::StructOpt;
 
@@ -70,14 +70,14 @@ fn list_env_vars(options: List) {
 fn set_env_var_user(options: Set) {
     let envch_sh_path = "/etc/profile.d/envch.sh";
     
-    let mut content_res = std::fs::read_to_string(envch_sh_path);
+    let mut content_res = fs::read_to_string(envch_sh_path);
     if content_res.is_err() {
         let create_res = File::create(envch_sh_path);
         if create_res.is_err() {
             println!("Error accessing {} -- try using `sudo`", envch_sh_path);
             return
         }
-        content_res = std::fs::read_to_string(envch_sh_path);
+        content_res = fs::read_to_string(envch_sh_path);
     }
     let content = content_res.unwrap();
     let mut new_content = String::new();
@@ -118,7 +118,7 @@ fn set_env_var_user(options: Set) {
         new_content.push_str(&options.value);
         new_content.push_str("\"");
     }
-    let write_res = std::fs::write(envch_sh_path, new_content);
+    let write_res = fs::write(envch_sh_path, new_content);
     if write_res.is_err() {
         println!("Error writing to {} -- try using `sudo`", envch_sh_path);
     } else {
@@ -130,7 +130,7 @@ fn set_env_var_user(options: Set) {
 fn set_env_var_system(options: Set) {
     let environment_path = "/etc/environment";
 
-    let content_res = std::fs::read_to_string(environment_path);
+    let content_res = fs::read_to_string(environment_path);
     if content_res.is_err() {
         println!("Error reading {} -- make sure you are using `sudo`", environment_path);
         return
@@ -175,7 +175,7 @@ fn set_env_var_system(options: Set) {
         new_content.push_str(&options.value);
         new_content.push_str("\"");
     }
-    let write_res = std::fs::write(environment_path, new_content);
+    let write_res = fs::write(environment_path, new_content);
     if write_res.is_err() {
         println!("Error writing to {} -- try using `sudo`", environment_path);
     } else {
@@ -216,7 +216,7 @@ fn set_env_var_terminal(options: Set) {
     } else {
         configuration_path = shellexpand::tilde("~/.bashrc").to_string();
     }
-    let content_res = std::fs::read_to_string(&configuration_path);
+    let content_res = fs::read_to_string(&configuration_path);
     if content_res.is_err() {
         println!("Error accessing {}", configuration_path);
         return;
@@ -226,7 +226,7 @@ fn set_env_var_terminal(options: Set) {
     content.push_str(&options.name);
     content.push('=');
     content.push_str(&options.value);
-    let res = std::fs::write(&configuration_path, content);
+    let res = fs::write(&configuration_path, content);
     if res.is_ok() {
         println!("Successfully updated {}", configuration_path);
         println!("Restart your terminal for changes to take effect");
@@ -251,7 +251,7 @@ fn set_env_var(options: Set) {
     }
     if existing_var_opt.is_some() {
         let existing_var = existing_var_opt.unwrap();
-        let content_opt = std::fs::read_to_string(existing_var.get_declared_in());
+        let content_opt = fs::read_to_string(existing_var.get_declared_in());
         if content_opt.is_err() {
             println!("Error reading {} -- try using `sudo`", existing_var.get_declared_in());
         }
@@ -293,7 +293,7 @@ fn set_env_var(options: Set) {
             new_content.push('\n');
         }
 
-        let write_res = std::fs::write(existing_var.get_declared_in(), new_content);
+        let write_res = fs::write(existing_var.get_declared_in(), new_content);
         if write_res.is_err() {
             println!("Error writing to {} -- try using `sudo`", existing_var.get_declared_in());
         } else {
@@ -315,11 +315,80 @@ fn set_env_var(options: Set) {
     }
 }
 
+/// Removes environment variable from /etc/environment
+fn remove_system_env_var(options: Remove) {
+    let system_var_path = "/etc/environment";
+    let content_res = fs::read_to_string(system_var_path);
+    if content_res.is_err() {
+        println!("Error reading {}", system_var_path);
+        return;
+    }
+    let content = content_res.unwrap();
+    let mut new_content = String::new();
+
+    let mut updated = false;
+    for line in content.lines() {
+        let mut parts = line.split('=');
+        let name_opt = parts.next();
+        if name_opt.is_none() {
+            if options.debug {
+                println!("No name found for environment variable line {} in {}", line, system_var_path);
+            }
+            new_content.push_str(line);
+            new_content.push('\n');
+            continue;
+        }
+        let name = name_opt.unwrap();
+        if name == options.name {
+            updated = true;
+        } else {
+            new_content.push_str(line);
+            new_content.push('\n');
+        }
+    }
+    if !updated {
+        println!("Couldn't find {} in {} even though it was found during the initial scan", options.name, system_var_path);
+        return;
+    }
+    let write_res = fs::write(system_var_path, new_content);
+    if write_res.is_err() {
+        println!("Error writing to {} -- try using `sudo`", system_var_path);
+    } else {
+        println!("Successfuly removed {} from {}", options.name, system_var_path);
+        println!("Restart you computer for changes to take effect");
+    }
+}
+
+fn remove_env_var(options: Remove) {
+    let env_vars_opt = utils::list_env::get_all_environment_variables(options.debug, false, false);
+    if env_vars_opt.is_none() {
+        println!("Error finding current environment variables");
+        return;
+    }
+    let env_vars = env_vars_opt.unwrap();
+    let mut env_var_opt = None;
+    for var in env_vars {
+        if var.get_name() == options.name {
+            env_var_opt = Some(var);
+            break;
+        }
+    } 
+    if env_var_opt.is_none() {
+        println!("Could not find environment variable with the name {}", options.name);
+        return;
+    }
+    let env_var = env_var_opt.unwrap();
+    if env_var.get_scope() == Scope::System {
+        remove_system_env_var(options);
+    }
+}
+
 fn main() {
     if let Some(subcommand) = input::Cli::from_args().command {
         match subcommand {
             input::Command::List(cfg) => list_env_vars(cfg),
-            input::Command::Set(cfg) => set_env_var(cfg)
+            input::Command::Set(cfg) => set_env_var(cfg),
+            input::Command::Remove(cfg) => remove_env_var(cfg)
         }
     } else {
         println!("Please use a subcommand. You can view subcommands by using the `--help` flag.");

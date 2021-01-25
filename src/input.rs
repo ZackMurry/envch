@@ -15,7 +15,8 @@ pub struct Cli {
 #[derive(Debug, StructOpt)]
 pub enum Command {
   List(List),
-  Set(Set)
+  Set(Set),
+  Remove(Remove)
 }
 
 #[derive(Debug, StructOpt, Clone, Copy)]
@@ -58,5 +59,17 @@ pub struct Set {
   /// If one already exists, it simply replaces the variable with the same scope.
   #[structopt(short, long, default_value = "user")]
   pub scope: Scope
+
+}
+
+#[derive(Debug, StructOpt, Clone)]
+pub struct Remove {
+
+  /// Name of environment variable to remove
+  pub name: String,
+
+  /// Show debug log
+  #[structopt(short, long)]
+  pub debug: bool
 
 }
