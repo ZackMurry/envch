@@ -184,6 +184,57 @@ fn set_env_var_system(options: Set) {
     }
 }
 
+fn set_env_var_terminal(options: Set) {
+    // getting user's default shell -- not necessarily the current shell
+    let cur_shell_path_res = std::env::var("SHELL");
+    if cur_shell_path_res.is_err() {
+        println!("Error finding current shell");
+        return;
+    }
+    let cur_shell_path = cur_shell_path_res.unwrap();
+    let cur_shell_path_end_opt = cur_shell_path.split("/").last();
+    if cur_shell_path_end_opt.is_none() {
+        println!("Error finding current shell");
+        return;
+    }
+    let cur_shell_opt = match cur_shell_path_end_opt.unwrap() {
+        "zsh" => Some("zsh"),
+        "bash" => Some("bash"),
+        _ => None
+    };
+    if cur_shell_opt.is_none() {
+        println!("Error: unsupported shell.");
+        println!("Terminal environment variables are set in the shell's configuration file. Please create an issue on github to get your shell supported.");
+        return;
+    }
+    let cur_shell = cur_shell_opt.unwrap();
+    println!("Configuring for {}", cur_shell);
+
+    let configuration_path: String;
+    if cur_shell == "zsh" {
+        configuration_path = shellexpand::tilde("~/.zshenv").to_string();
+    } else {
+        configuration_path = shellexpand::tilde("~/.bashrc").to_string();
+    }
+    let content_res = std::fs::read_to_string(&configuration_path);
+    if content_res.is_err() {
+        println!("Error accessing {}", configuration_path);
+        return;
+    }
+    let mut content = content_res.unwrap();
+    content.push_str("\nexport ");
+    content.push_str(&options.name);
+    content.push('=');
+    content.push_str(&options.value);
+    let res = std::fs::write(&configuration_path, content);
+    if res.is_ok() {
+        println!("Successfully updated {}", configuration_path);
+        println!("Restart your terminal for changes to take effect");
+    } else {
+        println!("Error updating {}", configuration_path);
+    }
+}
+
 fn set_env_var(options: Set) {
     let current_vars_opt = utils::list_env::get_all_environment_variables(options.debug, false, false);
     if current_vars_opt.is_none() {
@@ -259,6 +310,8 @@ fn set_env_var(options: Set) {
         set_env_var_system(options);
     } else if options.scope == Scope::User {
         set_env_var_user(options);
+    } else if options.scope == Scope::Terminal {
+        set_env_var_terminal(options);
     }
 }
 
