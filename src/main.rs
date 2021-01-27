@@ -359,7 +359,7 @@ fn remove_system_env_var(options: Remove) {
     }
 }
 
-fn remove_user_env_var(options: Remove, declared_in: &str) {
+fn remove_bash_env_var(options: Remove, declared_in: &str) {
     let content_res = fs::read_to_string(&declared_in);
     if content_res.is_err() {
         println!("Error reading {}", declared_in);
@@ -432,9 +432,8 @@ fn remove_env_var(options: Remove) {
     let env_var = env_var_opt.unwrap();
     if env_var.get_scope() == Scope::System {
         remove_system_env_var(options);
-    } else if env_var.get_scope() == Scope::User {
-        // todo test
-        remove_user_env_var(options, env_var.get_declared_in());
+    } else {
+        remove_bash_env_var(options, env_var.get_declared_in());
     }
 }
 
