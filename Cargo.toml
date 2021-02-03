@@ -1,8 +1,15 @@
 [package]
 name = "envch"
+description = "An intuitive program that allows users to set, modify, list, and remove environment variables"
 version = "0.1.0"
 authors = ["Zack Murry <zackk.murryy@gmail.com>"]
 edition = "2018"
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/ZackMurry/envch"
+repository = "https://github.com/ZackMurry/envch"
+keywords = ["cli", "environment variable", "env"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

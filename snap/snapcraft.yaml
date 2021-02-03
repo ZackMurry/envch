@@ -1,0 +1,31 @@
+name: envch
+version: git
+summary: A tool for easily altering environment variables
+description: |
+  Envch makes it easy to modify environment variables
+  Envch allows for
+  * Listing environment variables
+  * Creating new environment variables
+  * Updating existing environment variables
+  * Removing environment variables
+base: core20
+confinement: strict
+grade: stable
+
+parts:
+  envch:
+    plugin: rust
+    source: .
+
+plugs:
+  envch-config:
+    interface: system-files
+    write:
+    - /etc/environment
+    - /etc/profile.d
+
+apps:
+  envch:
+    command: bin/envch
+    plugs:
+      - envch-config

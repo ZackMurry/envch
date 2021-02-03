@@ -399,7 +399,7 @@ fn remove_bash_env_var(options: Remove, declared_in: &str) {
         }
     }
     if !updated {
-        println!("Environment variable found in {} but later not found", declared_in);
+        println!("{} was found in {} but later not found", options.name, declared_in);
         return;
     }
     let write_res = fs::write(declared_in, new_content);
