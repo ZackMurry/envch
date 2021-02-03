@@ -79,6 +79,9 @@ fn parse_bash(file_name: String, content: String, debug: bool, get_value_from_en
           value = value_result.unwrap();
         }
       }
+      if value.starts_with('"') && value.ends_with('"') {
+        value = value.chars().skip(1).take(value.len() - 2).collect();
+      }
       let env_variable = EnvironmentVariable::new(name.to_string(), value, Scope::User, file_name.clone());
       env_variables.push(env_variable);
     }
@@ -132,12 +135,15 @@ fn get_zsh_environment_variables(debug: bool) -> Option<Vec<EnvironmentVariable>
     if val_opt.is_none() {
       continue;
     }
-    let value = val_opt.unwrap().to_string();
+    let mut value = val_opt.unwrap().to_string();
     if name.starts_with('#') {
       continue;
     }
     if name.starts_with("export ") {
       name = name.chars().skip(7).collect();
+    }
+    if value.starts_with('"') && value.ends_with('"') {
+      value = value.chars().skip(1).take(value.len() - 2).collect();
     }
     let env_var = EnvironmentVariable::new(name, value, Scope::Terminal, zshenv_path.to_owned());
     env_vars.push(env_var);

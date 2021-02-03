@@ -19,13 +19,14 @@ pub enum Command {
   Remove(Remove)
 }
 
+/// List all of your environment variables
 #[derive(Debug, StructOpt, Clone, Copy)]
 pub struct List {
   /// Print the file in which each variable is declared
   #[structopt(short, long)]
   pub show_declared_in: bool,
 
-  /// Show PATH in output
+  /// Show PATH in output. By default, PATH is hidden
   #[structopt(short = "p", long)]
   pub show_path: bool,
 
@@ -62,6 +63,7 @@ pub struct Set {
 
 }
 
+/// Removes an environment variable
 #[derive(Debug, StructOpt, Clone)]
 pub struct Remove {
 

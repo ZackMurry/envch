@@ -105,7 +105,7 @@ fn set_env_var_user(options: Set) {
             new_content.push_str(&options.name);
             new_content.push_str("=\"");
             new_content.push_str(&options.value);
-            new_content.push_str("\"");
+            new_content.push('"');
         } else {
             new_content.push_str(line);
             new_content.push('\n');
@@ -116,7 +116,7 @@ fn set_env_var_user(options: Set) {
         new_content.push_str(&options.name);
         new_content.push_str("=\"");
         new_content.push_str(&options.value);
-        new_content.push_str("\"");
+        new_content.push('"');
     }
     let write_res = fs::write(envch_sh_path, new_content);
     if write_res.is_err() {
@@ -163,7 +163,7 @@ fn set_env_var_system(options: Set) {
             new_content.push_str(&options.name);
             new_content.push_str("=\"");
             new_content.push_str(&options.value);
-            new_content.push_str("\"");
+            new_content.push('"');
         } else {
             new_content.push_str(line);
             new_content.push('\n');
@@ -173,7 +173,7 @@ fn set_env_var_system(options: Set) {
         new_content.push_str(&options.name);
         new_content.push_str("=\"");
         new_content.push_str(&options.value);
-        new_content.push_str("\"");
+        new_content.push('"');
     }
     let write_res = fs::write(environment_path, new_content);
     if write_res.is_err() {
@@ -224,8 +224,9 @@ fn set_env_var_terminal(options: Set) {
     let mut content = content_res.unwrap();
     content.push_str("\nexport ");
     content.push_str(&options.name);
-    content.push('=');
+    content.push_str("=\"");
     content.push_str(&options.value);
+    content.push('"');
     let res = fs::write(&configuration_path, content);
     if res.is_ok() {
         println!("Successfully updated {}", configuration_path);
