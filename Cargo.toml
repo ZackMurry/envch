@@ -8,7 +8,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/ZackMurry/envch"
 repository = "https://github.com/ZackMurry/envch"
-keywords = ["cli", "environment variable", "env"]
+keywords = ["cli", "environment-variable", "env"]
 categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
