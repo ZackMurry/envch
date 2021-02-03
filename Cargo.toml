@@ -1,7 +1,7 @@
 [package]
 name = "envch"
 description = "An intuitive program that allows users to set, modify, list, and remove environment variables"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Zack Murry <zackk.murryy@gmail.com>"]
 edition = "2018"
 license = "MIT"
