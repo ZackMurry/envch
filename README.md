@@ -6,13 +6,27 @@ An intuitive program that allows users to create, modify, list, and remove envir
 
 ## Installation
 
-## Snap
-Envch only supports Linux. To install using Snap, run:
+### Cargo
+If you don't have Cargo already, install it using this command:
+
+#### macOS and Linux
+
 ```bash
-sudo snap install envch
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-# Manually
+#### Windows
+If you're on Windows, you can install Cargo using [this guide](https://forge.rust-lang.org/infra/other-installation-methods.html#other-ways-to-install-rustup).
+
+
+#### Install envch
+
+Then, install envch using:
+```bash
+cargo install envch
+```
+
+### Manually
 To manually install envch, run the following:
 ```bash
 git clone https://github.com/ZackMurry/envch.git
