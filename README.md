@@ -2,24 +2,18 @@
 
 ![Screenshot of envch in the terminal](assets/readme-simple-example.png)
 
-An intuitive program for setting, modifying, listing, and removing environment variables
+An intuitive program for setting, modifying, listing, and removing environment variables on Linux
 
 ## Installation
 
 ### Cargo
 If you don't have Cargo already, install it using this command:
 
-#### macOS and Linux
-
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-#### Windows
-If you're on Windows, you can install Cargo using [this guide](https://forge.rust-lang.org/infra/other-installation-methods.html#other-ways-to-install-rustup).
-
-
-#### Install envch
+### Install envch
 
 Then, install envch using:
 ```bash
